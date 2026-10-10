@@ -17,7 +17,27 @@ log()  { echo -e "${GREEN}[+]${RESET} $*"; }
 warn() { echo -e "${YELLOW}[!]${RESET} $*"; }
 err()  { echo -e "${RED}[-]${RESET} $*"; }
 
-need_cmd() { command -v "$1" >/dev/null 2>&1; }
+# Checks $PATH first, then falls back to common install locations in case
+# a tool was installed in an earlier session whose PATH changes haven't
+# been sourced yet in this shell (so we never reinstall something that's
+# already sitting on disk).
+EXTRA_BIN_DIRS=(
+    "$GOBIN"
+    "$HOME/go/bin"
+    "$HOME/.local/bin"
+    "/usr/local/bin"
+    "/usr/local/go/bin"
+)
+
+need_cmd() {
+    local tool="$1"
+    command -v "$tool" >/dev/null 2>&1 && return 0
+    local dir
+    for dir in "${EXTRA_BIN_DIRS[@]}"; do
+        [ -x "$dir/$tool" ] && return 0
+    done
+    return 1
+}
 
 # ---------------------------------------------------------------------------
 # Base dependencies (go, git) — required to build the Go-based tools below.
